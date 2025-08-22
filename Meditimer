@@ -1,0 +1,749 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediTimer - Pomodoro for Medical Students</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2a6b8f;
+            --secondary: #34a4dc;
+            --accent: #ff6b6b;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --background: #f0f7ff;
+            --text: #212529;
+            --card-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode {
+            --primary: #34a4dc;
+            --secondary: #2a6b8f;
+            --accent: #ff8e8e;
+            --light: #1a1a2e;
+            --dark: #e6e6e6;
+            --success: #4caf50;
+            --background: #0d0d1a;
+            --text: #e6e6e6;
+            --card-bg: #16213e;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%232a6b8f" fill-opacity="0.05" x="0" y="0" width="100" height="100"/><path d="M20,20 L80,20 L80,80 L20,80 Z" stroke="%232a6b8f" stroke-opacity="0.1" fill="none" stroke-width="2"/><circle cx="50" cy="50" r="30" stroke="%232a6b8f" stroke-opacity="0.1" fill="none" stroke-width="2"/></svg>');
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .logo i {
+            color: var(--accent);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .theme-toggle, .fullscreen-toggle {
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px var(--shadow);
+        }
+
+        .timer-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .timer-display {
+            font-size: 80px;
+            font-weight: 700;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .btn-secondary {
+            background-color: var(--light);
+            color: var(--dark);
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .btn-accent {
+            background-color: var(--accent);
+            color: white;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            background-color: var(--light);
+            padding: 8px;
+            border-radius: 50px;
+            margin: 15px 0;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            background: transparent;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .mode-btn.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .stats-card h2, .progress-card h2 {
+            margin-bottom: 20px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-box {
+            background-color: var(--light);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text);
+            opacity: 0.8;
+        }
+
+        .progress-chart {
+            margin-top: 20px;
+            height: 300px;
+            position: relative;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            background-color: var(--light);
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .tab.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--light);
+        }
+
+        .history-date {
+            font-weight: 600;
+        }
+
+        .history-time {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        footer {
+            margin-top: auto;
+            text-align: center;
+            padding: 20px;
+            color: var(--text);
+            opacity: 0.7;
+            font-size: 14px;
+        }
+
+        .motivation-text {
+            text-align: center;
+            margin: 20px 0;
+            font-style: italic;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        /* Full screen mode styles */
+        body.fullscreen-mode {
+            overflow: hidden;
+        }
+
+        body.fullscreen-mode .container {
+            max-width: 100%;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.fullscreen-mode header,
+        body.fullscreen-mode .motivation-text,
+        body.fullscreen-mode .main-content > :not(.timer-card),
+        body.fullscreen-mode footer {
+            display: none;
+        }
+
+        body.fullscreen-mode .timer-card {
+            flex: 1;
+            justify-content: center;
+            border-radius: 0;
+            box-shadow: none;
+            background-color: var(--background);
+        }
+
+        body.fullscreen-mode .timer-display {
+            font-size: 120px;
+        }
+
+        body.fullscreen-mode .timer-controls .btn {
+            padding: 20px 35px;
+            font-size: 18px;
+        }
+
+        body.fullscreen-mode .exit-fullscreen {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 10px var(--shadow);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <span>MediTimer</span>
+            </div>
+            <div class="header-controls">
+                <div class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <div class="fullscreen-toggle" id="fullscreenToggle">
+                    <i class="fas fa-expand"></i>
+                </div>
+            </div>
+        </header>
+
+        <div class="motivation-text">
+            "The expert in anything was once a beginner. Your dedication today will shape your medical career tomorrow."
+        </div>
+
+        <div class="main-content">
+            <div class="card timer-card">
+                <h2>Pomodoro Timer</h2>
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="pomodoro">Pomodoro</button>
+                    <button class="mode-btn" data-mode="short-break">Short Break</button>
+                    <button class="mode-btn" data-mode="long-break">Long Break</button>
+                </div>
+                <div class="timer-display" id="timer">25:00</div>
+                <div class="timer-controls">
+                    <button class="btn btn-primary" id="startBtn">
+                        <i class="fas fa-play"></i>Start
+                    </button>
+                    <button class="btn btn-secondary" id="pauseBtn">
+                        <i class="fas fa-pause"></i>Pause
+                    </button>
+                    <button class="btn btn-accent" id="resetBtn">
+                        <i class="fas fa-redo"></i>Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="card stats-card">
+                <h2><i class="fas fa-chart-line"></i>Today's Study Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Pomodoros Completed</div>
+                        <div class="stat-value" id="pomodoros">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Focus Time</div>
+                        <div class="stat-value" id="focusTime">0h 0m</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Sessions Today</div>
+                        <div class="stat-value" id="sessions">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg. Focus Time</div>
+                        <div class="stat-value" id="avgFocus">0h 0m</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card progress-card">
+                <h2><i class="fas fa-chart-area"></i>Study Progress</h2>
+                <div class="tabs">
+                    <button class="tab active" data-tab="weekly">Weekly</button>
+                    <button class="tab" data-tab="monthly">Monthly</button>
+                </div>
+                <div class="progress-chart">
+                    <canvas id="progressChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-history"></i>Study History</h2>
+                <div class="history-list" id="historyList">
+                    <!-- History items will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>MediTimer - Designed by zenzoun  | &copy; 2026 residanat </p>
+    </footer>
+
+    <div class="exit-fullscreen" id="exitFullscreen" style="display: none;">
+        <i class="fas fa-compress"></i>
+    </div>
+
+    <script>
+        // DOM Elements
+        const timerDisplay = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const fullscreenToggle = document.getElementById('fullscreenToggle');
+        const exitFullscreen = document.getElementById('exitFullscreen');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const tabButtons = document.querySelectorAll('.tab');
+        const pomodorosElement = document.getElementById('pomodoros');
+        const focusTimeElement = document.getElementById('focusTime');
+        const sessionsElement = document.getElementById('sessions');
+        const avgFocusElement = document.getElementById('avgFocus');
+        const historyList = document.getElementById('historyList');
+
+        // Timer variables
+        let timer;
+        let timeLeft = 25 * 60; // 25 minutes in seconds
+        let isRunning = false;
+        let currentMode = 'pomodoro';
+        let pomodorosCompleted = 0;
+        let totalFocusTime = 0; // in seconds
+        let studySessions = 0;
+        let isFullscreen = false;
+
+        // Mode durations in seconds
+        const modes = {
+            pomodoro: 25 * 60,
+            'short-break': 5 * 60,
+            'long-break': 15 * 60
+        };
+
+        // Initialize Chart.js
+        const ctx = document.getElementById('progressChart').getContext('2d');
+        const progressChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Study Hours',
+                    data: [3, 5, 2, 4, 6, 3, 7],
+                    backgroundColor: 'rgba(52, 164, 220, 0.2)',
+                    borderColor: 'rgba(52, 164, 220, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Hours'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Load data from localStorage
+        function loadData() {
+            const savedData = JSON.parse(localStorage.getItem('mediTimerData')) || {};
+            
+            pomodorosCompleted = savedData.pomodoros || 0;
+            totalFocusTime = savedData.focusTime || 0;
+            studySessions = savedData.sessions || 0;
+            
+            updateStats();
+            updateHistory();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            const dataToSave = {
+                pomodoros: pomodorosCompleted,
+                focusTime: totalFocusTime,
+                sessions: studySessions,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            localStorage.setItem('mediTimerData', JSON.stringify(dataToSave));
+        }
+
+        // Update statistics display
+        function updateStats() {
+            pomodorosElement.textContent = pomodorosCompleted;
+            
+            const hours = Math.floor(totalFocusTime / 3600);
+            const minutes = Math.floor((totalFocusTime % 3600) / 60);
+            focusTimeElement.textContent = `${hours}h ${minutes}m`;
+            
+            sessionsElement.textContent = studySessions;
+            
+            const avgMinutes = studySessions > 0 ? Math.floor((totalFocusTime / studySessions) / 60) : 0;
+            avgFocusElement.textContent = `${Math.floor(avgMinutes / 60)}h ${avgMinutes % 60}m`;
+        }
+
+        // Update study history
+        function updateHistory() {
+            // For demo purposes, we'll generate some fake history
+            historyList.innerHTML = '';
+            
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                
+                const day = days[date.getDay()];
+                const month = months[date.getMonth()];
+                const dayNum = date.getDate();
+                
+                // Random study time between 1 and 8 hours
+                const hours = Math.floor(Math.random() * 8) + 1;
+                const minutes = Math.floor(Math.random() * 60);
+                
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <span class="history-date">${day}, ${month} ${dayNum}</span>
+                    <span class="history-time">${hours}h ${minutes}m</span>
+                `;
+                
+                historyList.appendChild(historyItem);
+            }
+        }
+
+        // Format time in MM:SS format
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Update timer display
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTime(timeLeft);
+        }
+
+        // Start the timer
+        function startTimer() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            studySessions++;
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    isRunning = false;
+                    
+                    // Play completion sound
+                    const audio = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+                    audio.play().catch(e => {});
+                    
+                    if (currentMode === 'pomodoro') {
+                        pomodorosCompleted++;
+                        totalFocusTime += modes.pomodoro;
+                        
+                        // After pomodoro, switch to break
+                        if (pomodorosCompleted % 4 === 0) {
+                            switchMode('long-break');
+                        } else {
+                            switchMode('short-break');
+                        }
+                    } else {
+                        // After break, switch to pomodoro
+                        switchMode('pomodoro');
+                    }
+                    
+                    updateStats();
+                    saveData();
+                    startTimer();
+                }
+            }, 1000);
+        }
+
+        // Pause the timer
+        function pauseTimer() {
+            clearInterval(timer);
+            isRunning = false;
+        }
+
+        // Reset the timer
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            timeLeft = modes[currentMode];
+            updateTimerDisplay();
+        }
+
+        // Switch between modes
+        function switchMode(mode) {
+            currentMode = mode;
+            timeLeft = modes[mode];
+            
+            // Update active mode button
+            modeButtons.forEach(btn => {
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            updateTimerDisplay();
+            
+            // If timer was running, restart it
+            if (isRunning) {
+                pauseTimer();
+                startTimer();
+            }
+        }
+
+        // Toggle dark/light mode
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            
+            const icon = themeToggle.querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        }
+
+        // Toggle fullscreen mode
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            
+            if (isFullscreen) {
+                document.body.classList.add('fullscreen-mode');
+                exitFullscreen.style.display = 'flex';
+                fullscreenToggle.querySelector('i').classList.remove('fa-expand');
+                fullscreenToggle.querySelector('i').classList.add('fa-compress');
+            } else {
+                document.body.classList.remove('fullscreen-mode');
+                exitFullscreen.style.display = 'none';
+                fullscreenToggle.querySelector('i').classList.remove('fa-compress');
+                fullscreenToggle.querySelector('i').classList.add('fa-expand');
+            }
+        }
+
+        // Switch between chart tabs
+        function switchTab(tab) {
+            tabButtons.forEach(btn => {
+                if (btn.dataset.tab === tab) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Update chart data based on tab
+            if (tab === 'weekly') {
+                progressChart.data.labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                progressChart.data.datasets[0].data = [3, 5, 2, 4, 6, 3, 7];
+            } else {
+                progressChart.data.labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                progressChart.data.datasets[0].data = [25, 30, 22, 35];
+            }
+            
+            progressChart.update();
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        themeToggle.addEventListener('click', toggleTheme);
+        fullscreenToggle.addEventListener('click', toggleFullscreen);
+        exitFullscreen.addEventListener('click', toggleFullscreen);
+
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+        });
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        // Initialize
+        updateTimerDisplay();
+        loadData();
+    </script>
+</body>
+</html>
